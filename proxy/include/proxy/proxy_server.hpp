@@ -1203,7 +1203,7 @@ namespace proxy {
 				m_local_socket, m_local_buffer, req, net_awaitable[ec]);
 
 			auto mth = std::string(req.method_string());
-			auto target_view = std::string(req.target());
+			auto target_view = std::string(req.target()); // 怎么解析出来的，直接用boost的http解析
 			auto pa = std::string(req[http::field::proxy_authorization]);
 
 			LOG_DBG << "http proxy id: "
@@ -2645,7 +2645,7 @@ Connection: close
 				}
 
 				{
-					net::socket_base::keep_alive option(true);
+					net::socket_base::keep_alive option(true);  // tcp的保活机制
 					socket.set_option(option, error);
 				}
 
@@ -2654,10 +2654,10 @@ Connection: close
 					socket.set_option(option);
 				}
 
-				static std::atomic_size_t id{ 1 };
+				static std::atomic_size_t id{ 1 };  // static局部原子变量，tag
 				size_t connection_id = id++;
 
-				auto endp = socket.remote_endpoint();
+				auto endp = socket.remote_endpoint();  // 目的地址
 				auto client = endp.address().to_string();
 				client += ":" + std::to_string(endp.port());
 
@@ -2669,7 +2669,7 @@ Connection: close
 				// 等待读取事件.
 				co_await socket.async_wait(
 					tcp_socket::wait_read, net_awaitable[error]);
-				if (error)
+				if (error) 
 				{
 					LOG_WARN << "socket.async_wait error: " << error.message();
 					continue;
@@ -2684,7 +2684,7 @@ Connection: close
 					MSG_PEEK);
 #else
 				auto ret = recv(fd, (void*)detect, sizeof(detect),
-					MSG_PEEK | MSG_NOSIGNAL | MSG_DONTWAIT);
+					MSG_PEEK | MSG_NOSIGNAL | MSG_DONTWAIT);  // 怎么按照这个去判断的
 #endif
 				if (ret <= 0)
 				{
@@ -2744,7 +2744,7 @@ Connection: close
 				}
 				else if (detect[0] == 0x47
 					|| detect[0] == 0x50
-					|| detect[0] == 0x43)
+					|| detect[0] == 0x43)  // ? 为什么是http。按照头部分类
 				{
 					if (m_option.disable_noraml_http_)
 					{
@@ -2761,7 +2761,7 @@ Connection: close
 						std::make_shared<proxy_session>(
 							instantiate_proxy_stream(std::move(socket)),
 								connection_id, self);
-					m_clients[connection_id] = new_session;
+					m_clients[connection_id] = new_session; // 指向这个? 
 
 					new_session->start();
 				}
