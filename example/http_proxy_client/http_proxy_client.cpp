@@ -32,7 +32,7 @@ net::awaitable<void> start_http_proxy_client()
 
 	tcp::endpoint server_addr(
 		net::ip::address::from_string("0.0.0.0"),
-		7890);
+		8080);
 
 	boost::system::error_code ec;
 	co_await sock.async_connect(server_addr, net_awaitable[ec]);

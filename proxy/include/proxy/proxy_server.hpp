@@ -237,7 +237,7 @@ namespace proxy {
 	public:
 		virtual void start() override
 		{
-			auto server = m_proxy_server.lock();
+			auto server = m_proxy_server.lock();  // new shared ptr不让挂掉
 			if (!server)
 				return;
 
@@ -267,7 +267,7 @@ namespace proxy {
 			net::co_spawn(m_local_socket.get_executor(),
 				[self, this]() -> net::awaitable<void>
 				{
-					co_await start_socks_proxy();
+					co_await start_socks_proxy();   // 构建一个协程去处理
 				}, net::detached);
 		}
 
@@ -336,12 +336,12 @@ namespace proxy {
 				co_await socks_connect_v4();
 				co_return;
 			}
-			if (socks_version == 'G')
+			if (socks_version == 'G') // 没有P，只有Get。用curl测试下
 			{
 				co_await web_server();
 				co_return;
 			}
-			else if (socks_version == 'C')
+			else if (socks_version == 'C') // 
 			{
 				auto ret = co_await http_proxy_connect();
 				if (!ret)
@@ -1308,7 +1308,7 @@ namespace proxy {
 
 			co_await http::async_write(
 				m_local_socket,
-				res,
+				res,			 // 写入链接成功的响应
 				net_awaitable[ec]);
 			if (ec)
 			{
@@ -1330,7 +1330,7 @@ namespace proxy {
 			LOG_DBG << "http proxy id: " << m_connection_id
 				<< ", transfer completed";
 
-			co_return true;
+			co_return true; // 协程结束
 		}
 
 		inline net::awaitable<bool> socks_auth()
@@ -1496,13 +1496,13 @@ namespace proxy {
 			{
 				auto bytes = co_await from.async_read_some(
 					net::buffer(data), net_awaitable[ec]);
-				if (ec || m_abort)
+				if (ec || m_abort) // 关闭链接也是如此
 				{
 					if (bytes > 0)
 						co_await net::async_write(to,
 							net::buffer(data, bytes), net_awaitable[ec]);
 
-					to.shutdown(tcp_socket::shutdown_send, ec);
+					to.shutdown(tcp_socket::shutdown_send, ec); // 如果有问题，就关闭一个方向的链接
 					co_return;
 				}
 
@@ -2684,7 +2684,7 @@ Connection: close
 					MSG_PEEK);
 #else
 				auto ret = recv(fd, (void*)detect, sizeof(detect),
-					MSG_PEEK | MSG_NOSIGNAL | MSG_DONTWAIT);  // 怎么按照这个去判断的
+					MSG_PEEK | MSG_NOSIGNAL | MSG_DONTWAIT);  // MSG_PEEK读取数据做检查，不删除;MSG_DONTWAIT非阻塞获取;MSG_NOSIGNAL如果链接挂了还recv进程会挂掉，所以设置不发信号。
 #endif
 				if (ret <= 0)
 				{
@@ -2695,7 +2695,7 @@ Connection: close
 					continue;
 				}
 
-				// socks4/5 protocol.
+				// socks4/5 protocol.   // 不同协议做处理
 				if (detect[0] == 0x05 || detect[0] == 0x04)
 				{
 					LOG_DBG << "socks protocol:"
@@ -2742,9 +2742,9 @@ Connection: close
 
 					new_session->start();
 				}
-				else if (detect[0] == 0x47
-					|| detect[0] == 0x50
-					|| detect[0] == 0x43)  // ? 为什么是http。按照头部分类
+				else if (detect[0] == 0x47 // 71: G  	get
+					|| detect[0] == 0x50 // 80: P    	post 
+					|| detect[0] == 0x43) // 67: C   connect
 				{
 					if (m_option.disable_noraml_http_)
 					{
@@ -2759,9 +2759,9 @@ Connection: close
 
 					auto new_session =
 						std::make_shared<proxy_session>(
-							instantiate_proxy_stream(std::move(socket)),
+							instantiate_proxy_stream(std::move(socket)),  // 构建session
 								connection_id, self);
-					m_clients[connection_id] = new_session; // 指向这个? 
+					m_clients[connection_id] = new_session;
 
 					new_session->start();
 				}

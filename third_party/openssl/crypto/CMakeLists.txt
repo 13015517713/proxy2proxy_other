@@ -202,5 +202,5 @@ if(MINGW)
 endif()
 
 find_package(Threads)
-target_link_libraries(crypto ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(crypto ${CMAKE_THREAD_LIBS_INIT}  ${CMAKE_DL_LIBS} )
 
